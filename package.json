@@ -105,8 +105,8 @@
       "category": "Development",
       "maintainer": "CodexNexor <hello@agentvault.dev>",
       "vendor": "AgentVault",
-      "synopsis": "Encrypted AI coding workspace backup",
-      "description": "Backup and restore AI coding agent history and project files across machines. Supports Codex CLI, Claude Code, OpenCode, Aider, Continue, Gemini CLI.",
+      "synopsis": "AI coding agent backup for Codex, Claude Code & more",
+      "description": "Never lose AI coding history. Full project files + chat backup/restore for Codex CLI, Claude Code, OpenCode, Aider, Continue, Gemini CLI. Plain ZIP to Google Drive — restore after PC reset with one click.",
       "executableName": "agentvault",
       "artifactName": "agentvault_${version}_${arch}.${ext}"
     },

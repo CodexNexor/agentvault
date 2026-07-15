@@ -1,51 +1,58 @@
+<!--
+  AgentVault — SEO: AI coding agent backup, Codex CLI backup, Claude Code backup,
+  OpenCode history restore, developer tools, Google Drive backup, PC reset restore
+-->
 <p align="center">
-  <img src="build/icon.png" width="96" height="96" alt="AgentVault" />
+  <img src="build/icon.png" width="96" height="96" alt="AgentVault — AI coding agent backup and restore" />
 </p>
 
 <h1 align="center">AgentVault</h1>
 
 <p align="center">
   <strong>Never lose your AI coding history again.</strong><br/>
-  Full project + IDE history backup &amp; restore for <em>Codex · Claude Code · OpenCode · Aider · Continue · Gemini CLI</em>
+  Backup &amp; restore full projects + chat history for<br/>
+  <em>Codex CLI · Claude Code · OpenCode · Aider · Continue · Gemini CLI</em>
 </p>
 
 <p align="center">
-  <a href="https://github.com/CodexNexor/agentvault/releases"><img src="https://img.shields.io/github/v/release/CodexNexor/agentvault?style=flat-square" alt="release" /></a>
-  <a href="https://github.com/CodexNexor/agentvault/actions"><img src="https://img.shields.io/github/actions/workflow/status/CodexNexor/agentvault/release.yml?style=flat-square" alt="build" /></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-white?style=flat-square" alt="license" /></a>
-  <img src="https://img.shields.io/badge/platform-Linux%20%7C%20Windows%20%7C%20macOS-black?style=flat-square" alt="platform" />
+  <a href="https://github.com/CodexNexor/agentvault/releases/latest"><img src="https://img.shields.io/github/v/release/CodexNexor/agentvault?style=for-the-badge&label=latest" alt="Latest release" /></a>
+  <a href="https://github.com/CodexNexor/agentvault/releases"><img src="https://img.shields.io/github/downloads/CodexNexor/agentvault/total?style=for-the-badge" alt="Downloads" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-white?style=for-the-badge" alt="MIT license" /></a>
+  <img src="https://img.shields.io/badge/Linux-deb%20%7C%20AppImage-black?style=for-the-badge" alt="Linux" />
+  <img src="https://img.shields.io/badge/Windows-portable-black?style=for-the-badge" alt="Windows" />
 </p>
 
 <p align="center">
-  <a href="#install"><b>Install</b></a> ·
-  <a href="#features"><b>Features</b></a> ·
-  <a href="#after-pc-reset"><b>After PC reset</b></a> ·
-  <a href="#supported-agents"><b>Agents</b></a>
+  <a href="#install-linux-one-line">Install</a> ·
+  <a href="#features">Features</a> ·
+  <a href="#after-pc-reset--new-laptop">After PC reset</a> ·
+  <a href="#supported-ai-coding-agents">Agents</a> ·
+  <a href="https://github.com/CodexNexor/agentvault/releases">Releases</a>
 </p>
 
 ---
 
 ## Why AgentVault?
 
-You live in AI coding agents. Your best work is in **chats**, not just git.
+You live in **AI coding agents**. Your best work is in **chats**, not only git.
 
-Switch laptops or reinstall the OS and those histories vanish.
+Reinstall Linux, switch laptops, or wipe a drive — and those histories disappear.
 
-**AgentVault** backs up:
+**AgentVault** is a desktop app that:
 
-- ✅ Full project source (plain `.avault` ZIP)
-- ✅ Conversation history for every linked agent
-- ✅ Settings / configs where supported
-- ✅ One-click restore + path repair across machines
-- ✅ Works after full PC reset — **no vault password / encryption keys**
+| | |
+|--|--|
+| ✅ | Backs up **full project source** |
+| ✅ | Backs up **conversation history** for every linked agent |
+| ✅ | Uploads **plain ZIP** archives to **your Google Drive** |
+| ✅ | **One-click restore** after a full PC reset — no vault password |
+| ✅ | Auto **path repair** for Codex / Claude / etc. on the new machine |
 
-Built as a **personal local tool** for developers who use local-first AI agents.
+**Keywords:** AI coding agent backup · Codex CLI backup · Claude Code restore · OpenCode history · developer tools · Google Drive project backup
 
 ---
 
-## Install
-
-### Linux (one command)
+## Install (Linux one-line)
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/CodexNexor/agentvault/main/scripts/install.sh | bash
@@ -57,25 +64,26 @@ Then:
 agentvault
 ```
 
-### Debian / Ubuntu (.deb)
+The installer downloads the **latest public release** (`.deb` when possible, else tarball).
+
+### Debian / Ubuntu (.deb only)
 
 ```bash
-# Latest release .deb:
 curl -fL -o /tmp/agentvault.deb \
   https://github.com/CodexNexor/agentvault/releases/latest/download/agentvault_1.0.3_amd64.deb
 sudo dpkg -i /tmp/agentvault.deb
+agentvault
 ```
 
-Or download from [Releases](https://github.com/CodexNexor/agentvault/releases).
+> Tip: `releases/latest/download/…` always follows the newest release tag.
 
 ### Windows
 
-1. Download **AgentVault-Portable-*.exe** (or Setup) from [Releases](https://github.com/CodexNexor/agentvault/releases)
-2. Run and launch **AgentVault**
+Download **AgentVault-Portable-*.exe** from [Releases](https://github.com/CodexNexor/agentvault/releases) and run it.
 
 ### macOS
 
-Download the `.dmg` from [Releases](https://github.com/CodexNexor/agentvault/releases) when published.
+`.dmg` when published on [Releases](https://github.com/CodexNexor/agentvault/releases).
 
 ### From source
 
@@ -83,8 +91,8 @@ Download the `.dmg` from [Releases](https://github.com/CodexNexor/agentvault/rel
 git clone https://github.com/CodexNexor/agentvault.git
 cd agentvault
 npm install
-npm run dev            # development
-npm run package:linux  # produce .deb / AppImage / tar.gz
+npm run dev
+npm run package:linux   # .deb / AppImage / tar.gz
 ```
 
 ---
@@ -93,48 +101,58 @@ npm run package:linux  # produce .deb / AppImage / tar.gz
 
 | Feature | Description |
 |--------|-------------|
-| **Complete Backup** | Project files + all linked IDE histories → plain ZIP → Google Drive |
-| **Cloud Projects** | List Drive backups → one click download, unzip, restore |
-| **Multi-IDE** | Same project on Codex + Claude? Pick tools per backup |
-| **Path repair** | Restores chats on a new machine path |
-| **BYO Google OAuth** | Paste your Desktop Client ID + secret (no shared 100-user limit) |
-| **`.avault` format** | Plain ZIP of workspace + agent data (no encryption keys) |
-| **Legacy cleanup** | Old AES-encrypted cloud backups are purged; only ZIP archives list |
+| **Complete Backup** | Project files + all linked IDE histories → plain `.avault` ZIP → Google Drive |
+| **Cloud Projects** | Fast Drive scan → one-click download, unzip, restore |
+| **Multi-IDE** | Same repo used with Codex + Claude? Include both in one backup |
+| **Path repair** | Chats work after path changes on a new PC |
+| **BYO Google OAuth** | Your Desktop Client ID + secret — no shared 100-user cap |
+| **No encryption keys** | Personal tool mode: plain ZIP, restore after wipe without passwords |
+| **Fast Drive scan** | Parallel metadata fetch + short cache (v1.0.3+) |
 
 ---
 
-## After PC reset
+## After PC reset / new laptop
 
-1. Install Codex / Claude / your agents  
-2. Install AgentVault (`curl … \| bash` or `.deb`)  
-3. **Settings** → paste Google Desktop OAuth Client ID + secret → **Connect**  
+1. Install your agents (Codex, Claude Code, …)  
+2. Install AgentVault (`curl … | bash`)  
+3. **Settings** → Google Desktop OAuth Client ID + secret → **Connect**  
 4. **Cloud Projects** → **Restore all**  
-5. Project files land in `~/Downloads/AgentVault-Restores/<name>` (or choose a folder)  
-6. IDE histories restore into `~/.codex`, `~/.claude`, etc. automatically  
+5. Code → `~/Downloads/AgentVault-Restores/<project>`  
+6. Histories → `~/.codex`, `~/.claude`, … automatically  
 
 No vault password. Connect Drive → restore.
 
 ---
 
-## Supported agents
+## Supported AI coding agents
 
-- OpenAI **Codex CLI**  
-- **Claude Code**  
-- **OpenCode**  
-- **Aider**  
-- **Continue**  
-- **Gemini CLI**  
+- OpenAI **Codex CLI**
+- **Claude Code**
+- **OpenCode**
+- **Aider**
+- **Continue**
+- **Gemini CLI**
 
-Plugin architecture: add more via `AgentProvider`.
+Plugin architecture: implement `AgentProvider` to add more.
 
 ---
 
-## Privacy / Drive
+## Google Drive layout
 
-- Backups are **your** plain ZIP archives on **your** Google Drive  
-- OAuth Client ID/secret stay on **your** machine (BYO Desktop OAuth)  
-- Prefer scope `drive.file` (only app-created files)  
-- Personal tool — not a multi-tenant SaaS vault
+```
+AgentVault/
+  Backups/<ProjectName>/*.avault   # plain ZIP per project
+  Metadata/<backupId>.json         # catalog for scan / restore
+```
+
+---
+
+## Privacy
+
+- Archives live on **your** Google Drive only  
+- OAuth secrets stay on **your** PC (BYO Desktop app)  
+- Prefer scope `drive.file` (app-created files)  
+- Personal desktop tool — not a multi-tenant SaaS
 
 ---
 
@@ -143,15 +161,22 @@ Plugin architecture: add more via `AgentProvider`.
 ```bash
 npm run dev              # Electron + Vite
 npm run package:linux    # deb + tar.gz + AppImage
-npm run package:win      # Windows (on Windows or CI)
+npm run package:win      # Windows portable / NSIS
 ```
 
-Current release: **v1.0.3**
+**Latest release:** [v1.0.3](https://github.com/CodexNexor/agentvault/releases/tag/v1.0.3)
 
 ---
 
-## Star this repo if AI coding backups matter to you
+## Links
 
-PRs welcome. Built for the local-agent era.
+- ⭐ [Star on GitHub](https://github.com/CodexNexor/agentvault)
+- 📦 [All downloads](https://github.com/CodexNexor/agentvault/releases)
+- 🐛 [Issues](https://github.com/CodexNexor/agentvault/issues)
+- 📜 License: **MIT**
 
-**License:** MIT
+---
+
+<p align="center">
+  Built for the local-agent era · Codex · Claude Code · OpenCode · Aider
+</p>
