@@ -47,8 +47,8 @@ const api: IpcApi = {
   saveGoogleOAuthCredentials: (clientId, clientSecret) =>
     ipcRenderer.invoke('google:saveOAuth', clientId, clientSecret),
   clearGoogleOAuthCredentials: () => ipcRenderer.invoke('google:clearOAuth'),
-  scanDrive: () => ipcRenderer.invoke('drive:scan'),
-  getCloudBackups: () => ipcRenderer.invoke('drive:scan'),
+  scanDrive: (force) => ipcRenderer.invoke('drive:scan', force),
+  getCloudBackups: (force) => ipcRenderer.invoke('drive:scan', force),
   importFromDrive: (backupId) => ipcRenderer.invoke('drive:import', backupId),
   purgeLegacyCloudBackups: () => ipcRenderer.invoke('drive:purgeLegacy'),
 

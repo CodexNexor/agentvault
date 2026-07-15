@@ -46,7 +46,8 @@ export function DrivePage() {
     refetch,
   } = useQuery({
     queryKey: ['cloudBackups'],
-    queryFn: () => vault.scanDrive(),
+    queryFn: () => vault.scanDrive(false),
+    staleTime: 15_000,
     enabled: Boolean(google?.connected),
   })
 

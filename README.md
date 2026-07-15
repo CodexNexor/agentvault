@@ -62,7 +62,7 @@ agentvault
 ```bash
 # Latest release .deb:
 curl -fL -o /tmp/agentvault.deb \
-  https://github.com/CodexNexor/agentvault/releases/latest/download/agentvault_1.0.2_amd64.deb
+  https://github.com/CodexNexor/agentvault/releases/latest/download/agentvault_1.0.3_amd64.deb
 sudo dpkg -i /tmp/agentvault.deb
 ```
 
@@ -146,7 +146,7 @@ npm run package:linux    # deb + tar.gz + AppImage
 npm run package:win      # Windows (on Windows or CI)
 ```
 
-Current release: **v1.0.2**
+Current release: **v1.0.3**
 
 ---
 

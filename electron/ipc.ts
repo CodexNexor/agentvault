@@ -150,8 +150,10 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
     restoreEngine.getDefaultRestorePath(projectName)
   )
 
-  // Drive scan / import for fresh PC recovery (plain ZIP only)
-  ipcMain.handle('drive:scan', async () => googleDrive.scanDrive())
+  // Drive scan / import for fresh PC recovery (plain ZIP only — fast metadata scan)
+  ipcMain.handle('drive:scan', async (_e, force?: boolean) =>
+    googleDrive.scanDrive({ force: Boolean(force) })
+  )
   ipcMain.handle('drive:import', async (_e, backupId: string) => {
     const list = await googleDrive.scanDrive()
     const entry = list.find((c) => c.backupId === backupId)

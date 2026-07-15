@@ -49,8 +49,9 @@ export function CloudProjectsPage() {
     refetch,
   } = useQuery({
     queryKey: ['cloudBackups'],
-    queryFn: () => vault.scanDrive(),
+    queryFn: () => vault.scanDrive(false),
     enabled: Boolean(google?.connected),
+    staleTime: 15_000,
   })
 
   const restoreEverything = async (
@@ -164,11 +165,10 @@ export function CloudProjectsPage() {
               <div>
                 <CardTitle>Automatic cloud restore</CardTitle>
                 <CardDescription className="mt-1 max-w-xl">
-                  Only <strong className="text-white/70">plain ZIP</strong>{' '}
-                  backups are listed. Old encrypted archives are removed from
-                  Drive automatically. Click{' '}
+                  Fast metadata scan of plain ZIP backups on Drive. Click{' '}
                   <strong className="text-white/70">Restore all</strong> — no
-                  password.
+                  password. Use <strong className="text-white/70">Remove old encrypted</strong>{' '}
+                  only if you still have leftover AES archives to trash.
                 </CardDescription>
               </div>
             </div>
@@ -176,7 +176,13 @@ export function CloudProjectsPage() {
               <Button
                 variant="secondary"
                 loading={isFetching}
-                onClick={() => refetch()}
+                onClick={async () => {
+                  // Force fresh Drive list (bypasses 20s cache)
+                  await qc.fetchQuery({
+                    queryKey: ['cloudBackups'],
+                    queryFn: () => vault.scanDrive(true),
+                  })
+                }}
               >
                 <RefreshCw className="h-4 w-4" />
                 Refresh cloud list
@@ -193,7 +199,10 @@ export function CloudProjectsPage() {
                       title: 'Old encrypted backups removed',
                       message: `Deleted ${r.deleted} · kept ${r.kept} plain ZIP`,
                     })
-                    await refetch()
+                    await qc.fetchQuery({
+                      queryKey: ['cloudBackups'],
+                      queryFn: () => vault.scanDrive(true),
+                    })
                   } catch (err) {
                     push({
                       type: 'error',

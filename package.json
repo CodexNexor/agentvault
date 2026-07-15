@@ -2,7 +2,7 @@
   "name": "agentvault",
   "productName": "AgentVault",
   "private": false,
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Never lose your AI coding history again. Plain ZIP backup & restore for Codex, Claude Code, OpenCode, Aider, Continue & Gemini CLI — full project files + chat history across machines.",
   "author": {
     "name": "CodexNexor",

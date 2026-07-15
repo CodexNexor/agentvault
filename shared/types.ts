@@ -320,9 +320,9 @@ export interface IpcApi {
     clientSecret: string
   ) => Promise<{ ok: boolean }>
   clearGoogleOAuthCredentials: () => Promise<void>
-  /** Scan AgentVault folder on Drive for plain-zip project backups only */
-  scanDrive: () => Promise<CloudBackupEntry[]>
-  getCloudBackups: () => Promise<CloudBackupEntry[]>
+  /** Fast scan of plain-zip cloud backups (pass true to bypass short cache) */
+  scanDrive: (force?: boolean) => Promise<CloudBackupEntry[]>
+  getCloudBackups: (force?: boolean) => Promise<CloudBackupEntry[]>
   /** Download cloud backup into local catalog then ready for restore */
   importFromDrive: (backupId: string) => Promise<BackupMeta>
   /**

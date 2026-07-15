@@ -411,8 +411,8 @@ export const vault = {
     return `/home/dev/Downloads/AgentVault-Restores/${projectName}`
   },
 
-  async scanDrive(): Promise<CloudBackupEntry[]> {
-    if (hasElectron()) return api().scanDrive()
+  async scanDrive(force?: boolean): Promise<CloudBackupEntry[]> {
+    if (hasElectron()) return api().scanDrive(force)
     await delay(400)
     const local = await this.getBackups()
     return local.map((b) => ({
@@ -433,8 +433,8 @@ export const vault = {
     }))
   },
 
-  async getCloudBackups(): Promise<CloudBackupEntry[]> {
-    return this.scanDrive()
+  async getCloudBackups(force?: boolean): Promise<CloudBackupEntry[]> {
+    return this.scanDrive(force)
   },
 
   async importFromDrive(backupId: string): Promise<BackupMeta> {
