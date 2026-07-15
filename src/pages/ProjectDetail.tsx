@@ -76,7 +76,7 @@ export function ProjectDetailPage() {
       if (!window.agentVault) {
         for (const s of [
           { stage: 'gathering' as const, progress: 25, message: 'Gathering…' },
-          { stage: 'encrypting' as const, progress: 70, message: 'Encrypting…' },
+          { stage: 'encrypting' as const, progress: 70, message: 'Packaging…' },
           { stage: 'complete' as const, progress: 100, message: 'Done' },
         ]) {
           await new Promise((r) => setTimeout(r, 350))
@@ -288,7 +288,7 @@ export function ProjectDetailPage() {
                   <div className="text-xs text-white/35">
                     {formatBytes(b.compressedBytes)} ·{' '}
                     {b.agents.map(agentLabel).join(', ')} ·{' '}
-                    {b.encrypted ? 'encrypted' : 'plain'}
+                    archive
                   </div>
                 </div>
                 <Button

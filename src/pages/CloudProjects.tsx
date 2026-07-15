@@ -9,6 +9,7 @@ import {
   MapPin,
   Sparkles,
   CheckCircle2,
+  Trash2,
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { TopBar } from '@/components/layout/TopBar'
@@ -24,8 +25,9 @@ import { useAppStore } from '@/stores/app-store'
 import type { CloudBackupEntry } from '../../shared/types'
 
 /**
- * Cloud Projects — only backups on Google Drive.
- * One click: download → decrypt → unzip → project files + Codex/Claude/all IDE history.
+ * Cloud Projects — backups on Google Drive.
+ * One click: download → unzip → project files + all IDE history.
+ * No encryption keys / passwords.
  */
 export function CloudProjectsPage() {
   const navigate = useNavigate()
@@ -33,6 +35,7 @@ export function CloudProjectsPage() {
   const setRestoreProgress = useAppStore((s) => s.setRestoreProgress)
   const qc = useQueryClient()
   const [busyId, setBusyId] = useState<string | null>(null)
+  const [purging, setPurging] = useState(false)
 
   const { data: google } = useQuery({
     queryKey: ['google'],
@@ -50,13 +53,6 @@ export function CloudProjectsPage() {
     enabled: Boolean(google?.connected),
   })
 
-  /**
-   * Fully automatic restore:
-   * 1) Download .avault from Drive
-   * 2) Decrypt + unzip
-   * 3) Project source → Downloads/AgentVault-Restores/<name> (or chosen folder)
-   * 4) IDE history → ~/.codex, ~/.claude, etc. automatically
-   */
   const restoreEverything = async (
     entry: CloudBackupEntry,
     projectFolder?: string | null
@@ -120,7 +116,6 @@ export function CloudProjectsPage() {
   const restoreToChosenFolder = async (entry: CloudBackupEntry) => {
     const folder = await vault.selectFolder()
     if (!folder) return
-    // Put project inside selected folder as /selected/projectName
     const dest = `${folder.replace(/\/$/, '')}/${entry.projectName}`
     await restoreEverything(entry, dest)
   }
@@ -136,7 +131,7 @@ export function CloudProjectsPage() {
           <EmptyState
             icon={Cloud}
             title="Connect Drive to see cloud projects"
-            description="Complete Backup uploads full project + IDE history. Here you only see those cloud backups. One click downloads, unzips, and restores Codex/Claude/all tools."
+            description="Complete Backup uploads full project + IDE history as a plain archive. One click restores everything after a PC reset — no password."
             action={
               <div className="flex flex-wrap gap-2 justify-center">
                 <Button onClick={() => navigate('/settings')}>
@@ -157,7 +152,7 @@ export function CloudProjectsPage() {
     <div>
       <TopBar
         title="Cloud Projects"
-        subtitle="Only cloud backups — one click downloads, unzips, restores files + all IDE history"
+        subtitle="Cloud backups — one click downloads, unzips, restores files + all IDE history"
       />
       <div className="p-6 max-w-[1000px] space-y-6">
         <Card className="border-white/10 bg-gradient-to-br from-white/[0.06] to-transparent">
@@ -169,22 +164,51 @@ export function CloudProjectsPage() {
               <div>
                 <CardTitle>Automatic cloud restore</CardTitle>
                 <CardDescription className="mt-1 max-w-xl">
-                  Each card is a complete backup on Drive (project zip + IDE
-                  chats). Click <strong className="text-white/70">Restore all</strong>{' '}
-                  — we download, decrypt, unzip, place code under Downloads, and
-                  put history back into Codex, Claude Code, OpenCode, and other
-                  tools automatically.
+                  Only <strong className="text-white/70">plain ZIP</strong>{' '}
+                  backups are listed. Old encrypted archives are removed from
+                  Drive automatically. Click{' '}
+                  <strong className="text-white/70">Restore all</strong> — no
+                  password.
                 </CardDescription>
               </div>
             </div>
-            <Button
-              variant="secondary"
-              loading={isFetching}
-              onClick={() => refetch()}
-            >
-              <RefreshCw className="h-4 w-4" />
-              Refresh cloud list
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant="secondary"
+                loading={isFetching}
+                onClick={() => refetch()}
+              >
+                <RefreshCw className="h-4 w-4" />
+                Refresh cloud list
+              </Button>
+              <Button
+                variant="ghost"
+                loading={purging}
+                onClick={async () => {
+                  setPurging(true)
+                  try {
+                    const r = await vault.purgeLegacyCloudBackups()
+                    push({
+                      type: 'success',
+                      title: 'Old encrypted backups removed',
+                      message: `Deleted ${r.deleted} · kept ${r.kept} plain ZIP`,
+                    })
+                    await refetch()
+                  } catch (err) {
+                    push({
+                      type: 'error',
+                      title: 'Cleanup failed',
+                      message: err instanceof Error ? err.message : 'Error',
+                    })
+                  } finally {
+                    setPurging(false)
+                  }
+                }}
+              >
+                <Trash2 className="h-4 w-4" />
+                Remove old encrypted
+              </Button>
+            </div>
           </div>
         </Card>
 
@@ -198,7 +222,7 @@ export function CloudProjectsPage() {
           <EmptyState
             icon={Cloud}
             title="No cloud projects yet"
-            description="On any machine: open a project → Complete Backup. Then Refresh here. Only Drive backups appear in this section."
+            description="Old encrypted backups were cleared. Run Complete Backup on a project (new plain ZIP), then Refresh. Only ZIP archives appear here."
             action={
               <Button variant="secondary" loading={isFetching} onClick={() => refetch()}>
                 Scan Drive again

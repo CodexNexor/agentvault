@@ -146,7 +146,7 @@ export function BackupsPage() {
           <EmptyState
             icon={HardDrive}
             title="No backups yet"
-            description="Back up a project from the Dashboard or Projects page to create your first encrypted archive."
+            description="Back up a project from the Dashboard or Projects page to create your first archive."
           />
         ) : (
           <div className="space-y-2">
@@ -162,7 +162,7 @@ export function BackupsPage() {
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 mb-1">
                         <span className="text-sm font-semibold">{b.projectName}</span>
-                        {b.encrypted && <Badge tone="success">Encrypted</Badge>}
+                        <Badge tone="muted">Archive</Badge>
                         <Badge tone={b.location === 'both' ? 'accent' : 'muted'}>
                           {b.location === 'both'
                             ? 'Local + Cloud'
@@ -213,7 +213,7 @@ export function BackupsPage() {
                           push({
                             type: 'success',
                             title: 'Exported',
-                            message: 'Encrypted .avault file saved.',
+                            message: '.avault archive saved.',
                           })
                         }}
                       >

@@ -22,7 +22,7 @@ export function WelcomePage() {
         push({
           type: 'success',
           title: 'Google Drive Connected',
-          message: 'Your encrypted backups will sync to the cloud.',
+          message: 'Your project backups will sync to the cloud.',
         })
       }
       navigate('/', { replace: true })
@@ -134,7 +134,7 @@ export function WelcomePage() {
         </motion.div>
 
         <p className="mt-8 text-[11px] text-white/25 leading-relaxed">
-          Everything is encrypted on your machine first. We never see your chats or keys.
+          Backups go to your Google Drive only. Personal tool — no encryption passwords.
         </p>
       </motion.div>
     </div>

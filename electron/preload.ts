@@ -50,6 +50,7 @@ const api: IpcApi = {
   scanDrive: () => ipcRenderer.invoke('drive:scan'),
   getCloudBackups: () => ipcRenderer.invoke('drive:scan'),
   importFromDrive: (backupId) => ipcRenderer.invoke('drive:import', backupId),
+  purgeLegacyCloudBackups: () => ipcRenderer.invoke('drive:purgeLegacy'),
 
   setMasterPassword: (password) =>
     ipcRenderer.invoke('security:setMasterPassword', password),

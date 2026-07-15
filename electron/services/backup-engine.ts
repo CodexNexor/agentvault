@@ -217,28 +217,21 @@ export class BackupEngine {
 
       if (this.cancelled) throw new Error('Cancelled')
 
-      // Encrypt
+      // Package as plain .avault (ZIP) — no encryption keys / passwords
       this.emit({
         backupId,
         projectId: project.id,
         projectName: project.name,
         stage: 'encrypting',
         progress: 75,
-        message: 'Encrypting with AES-256-GCM…',
+        message: 'Packaging archive…',
       })
 
-      let checksum: string
-      let finalPath = encryptedPath
-      let encrypted = settings.encryptionEnabled
-
-      if (settings.encryptionEnabled) {
-        checksum = await encryption.encryptFile(archivePath, encryptedPath)
-      } else {
-        finalPath = path.join(paths.backups, `${backupId}.zip`)
-        await fs.move(archivePath, finalPath)
-        checksum = await encryption.checksumFile(finalPath)
-        encrypted = false
-      }
+      // .avault = plain zip for easy Drive recovery after PC reset
+      const finalPath = encryptedPath
+      await fs.move(archivePath, finalPath, { overwrite: true })
+      const checksum = await encryption.checksumFile(finalPath)
+      const encrypted = false
 
       // Upload to cloud if connected (Complete Backup always tries Drive)
       let cloudPath: string | null = null
@@ -259,14 +252,13 @@ export class BackupEngine {
             : 'Uploading to Google Drive…',
         })
         try {
-          // Ensure drive connection flags for demo catalog
           if (!settings.googleConnected && forceCloud) {
-            // Still attempt — demo mode catalog works without real OAuth
             database.updateSettings({
               googleConnected: true,
               cloudProvider: 'google-drive',
             })
           }
+
           cloudPath = await googleDrive.uploadBackup(
             finalPath,
             project.name,
@@ -296,7 +288,7 @@ export class BackupEngine {
           this.toast(
             'success',
             'Saved to Google Drive',
-            `${project.name} · files + IDE history encrypted in cloud`
+            `${project.name} · full project + IDE history (ready after PC reset)`
           )
         } catch (err) {
           console.error('[Backup] Cloud upload failed:', err)
@@ -383,7 +375,7 @@ export class BackupEngine {
         complete ? 'Complete Backup Done' : 'Backup Complete',
         location === 'both'
           ? `${project.name} · project files + IDE history on this PC and Drive`
-          : `${project.name} · project files + IDE history encrypted locally`
+          : `${project.name} · project files + IDE history saved locally`
       )
 
       // Cleanup temp
@@ -529,26 +521,16 @@ export class BackupEngine {
     const checksum = await encryption.checksumFile(dest)
     const stat = await fs.stat(dest)
 
-    // Try to read manifest if we can decrypt
-    let projectName = 'Imported Backup'
-    let projectId = uuid()
-    let agents: BackupMeta['agents'] = []
-    let framework: string | null = null
-    let chatCount = 0
+    const projectName = path.basename(filePath, path.extname(filePath)) || 'Imported Backup'
+    const projectId = uuid()
+    const agents: BackupMeta['agents'] = []
+    const framework: string | null = null
+    const chatCount = 0
 
-    try {
-      const workDir = path.join(paths.temp, `import-${backupId}`)
-      await fs.ensureDir(workDir)
-      const zipPath = path.join(workDir, 'archive.zip')
-      if (filePath.endsWith('.avault') || dest.endsWith('.avault')) {
-        await encryption.decryptFile(dest, zipPath)
-      } else {
-        await fs.copy(dest, zipPath)
-      }
-      // Light import — store metadata only; full extract on restore
-      await fs.remove(workDir).catch(() => {})
-    } catch {
-      /* keep defaults */
+    if (await encryption.looksLikeLegacyEncrypted(dest)) {
+      throw new Error(
+        'This file uses the old encryption format. Run Complete Backup again with the new app (plain archives).'
+      )
     }
 
     const backup: BackupMeta = {
@@ -561,7 +543,7 @@ export class BackupEngine {
       sizeBytes: stat.size,
       compressedBytes: stat.size,
       checksum,
-      encrypted: dest.endsWith('.avault'),
+      encrypted: false,
       location: 'local',
       cloudPath: null,
       localPath: dest,
@@ -596,7 +578,7 @@ export class BackupEngine {
     database.addActivity({
       type: 'info',
       title: 'Backup imported',
-      message: `Imported encrypted backup (${formatBytes(stat.size)})`,
+      message: `Imported backup (${formatBytes(stat.size)})`,
       level: 'success',
     })
     this.toast('success', 'Backup Imported', 'Encrypted backup is ready to restore.')

@@ -23,13 +23,13 @@ export function AboutPage() {
             </p>
             <div className="flex justify-center gap-2 mb-8">
               <Badge tone="accent">v1.0.0</Badge>
-              <Badge>AES-256-GCM</Badge>
+              <Badge>Plain ZIP</Badge>
               <Badge>Electron</Badge>
             </div>
             <div className="grid grid-cols-2 gap-3 text-left max-w-md mx-auto">
               {[
                 'Plugin-based agent adapters',
-                'Local encryption before upload',
+                'Full project + IDE history',
                 'Google Drive sync',
                 'Automatic path repair',
                 'Background auto-backup',

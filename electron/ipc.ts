@@ -150,15 +150,18 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
     restoreEngine.getDefaultRestorePath(projectName)
   )
 
-  // Drive scan / import for fresh PC recovery
+  // Drive scan / import for fresh PC recovery (plain ZIP only)
   ipcMain.handle('drive:scan', async () => googleDrive.scanDrive())
   ipcMain.handle('drive:import', async (_e, backupId: string) => {
     const list = await googleDrive.scanDrive()
     const entry = list.find((c) => c.backupId === backupId)
-    if (!entry) throw new Error('Backup not found on Drive')
+    if (!entry) throw new Error('Backup not found on Drive (plain ZIP only)')
     await googleDrive.importCloudBackup(entry)
     return database.getBackup(backupId)
   })
+  ipcMain.handle('drive:purgeLegacy', async () =>
+    googleDrive.purgeLegacyCloudBackups()
+  )
 
   // Search
   ipcMain.handle('search:query', (_e, query: string) => {
@@ -216,18 +219,12 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
     await googleDrive.clearUserCredentials()
   })
 
-  // Security
-  ipcMain.handle('security:setMasterPassword', async (_e, password: string) => {
-    const result = await encryption.setMasterPassword(password)
-    database.updateSettings({ masterPasswordSet: true })
-    return result
-  })
-  ipcMain.handle('security:unlock', (_e, password: string) =>
-    encryption.unlockWithPassword(password)
-  )
-  ipcMain.handle('security:unlockRecovery', (_e, key: string) =>
-    encryption.unlockWithRecoveryKey(key)
-  )
+  // Kept for older UI compatibility — no encryption keys in this app
+  ipcMain.handle('security:setMasterPassword', async () => ({
+    recoveryKey: '',
+  }))
+  ipcMain.handle('security:unlock', async () => true)
+  ipcMain.handle('security:unlockRecovery', async () => true)
   ipcMain.handle('security:isUnlocked', () => encryption.isUnlocked())
 
   // Analytics

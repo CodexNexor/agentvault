@@ -92,7 +92,7 @@ export function ProjectCard({
       push({
         type: 'success',
         title: 'Complete backup finished',
-        message: `${project.name} · full project + all tools ready for Drive recovery`,
+        message: `${project.name} · full project + all tools on Drive (works after PC reset, no password)`,
       })
       setModalOpen(false)
     } catch (err) {

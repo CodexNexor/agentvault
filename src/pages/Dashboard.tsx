@@ -69,10 +69,10 @@ export function DashboardPage() {
       tone: dashboard?.cloudStorage === 'google-drive' ? 'accent' : 'muted',
     },
     {
-      label: 'Encryption',
-      value: dashboard?.encryptionEnabled ? 'Enabled' : 'Off',
+      label: 'Archives',
+      value: 'Plain ZIP',
       icon: Lock,
-      tone: dashboard?.encryptionEnabled ? 'success' : 'danger',
+      tone: 'success',
     },
     {
       label: 'Auto Backup',
@@ -105,7 +105,7 @@ export function DashboardPage() {
             <div>
               <h2 className="text-sm font-semibold text-white/90">How protected you are</h2>
               <p className="text-xs text-white/35 mt-0.5">
-                A quick look at backups, encryption, and cloud on this machine
+                A quick look at backups and cloud on this machine
               </p>
             </div>
             <Button

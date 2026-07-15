@@ -19,7 +19,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   autoBackupInterval: '15m',
   theme: 'dark',
   notifications: true,
-  encryptionEnabled: true,
+  encryptionEnabled: false,
   masterPasswordSet: false,
   googleConnected: false,
   googleEmail: null,

@@ -6,11 +6,10 @@ import { Toggle } from '@/components/ui/Toggle'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Badge } from '@/components/ui/Badge'
-import { Modal } from '@/components/ui/Modal'
 import { vault } from '@/lib/api'
 import type { AppSettings, AutoBackupInterval } from '../../shared/types'
 import { useToastStore } from '@/stores/toast-store'
-import { Cloud, KeyRound, Shield, ExternalLink, Eye, EyeOff } from 'lucide-react'
+import { Cloud, Shield, ExternalLink, Eye, EyeOff, HardDrive } from 'lucide-react'
 
 const INTERVALS: { value: AutoBackupInterval; label: string }[] = [
   { value: 'manual', label: 'Manual' },
@@ -33,9 +32,6 @@ export function SettingsPage() {
   })
 
   const [local, setLocal] = useState<AppSettings | null>(null)
-  const [passwordModal, setPasswordModal] = useState(false)
-  const [password, setPassword] = useState('')
-  const [recoveryKey, setRecoveryKey] = useState<string | null>(null)
   const [clientId, setClientId] = useState('')
   const [clientSecret, setClientSecret] = useState('')
   const [showSecret, setShowSecret] = useState(false)
@@ -121,7 +117,7 @@ export function SettingsPage() {
 
   return (
     <div>
-      <TopBar title="Settings" subtitle="General, storage, encryption & agents" />
+      <TopBar title="Settings" subtitle="General, storage, Drive & agents" />
       <div className="p-6 max-w-[720px] space-y-6">
         {/* General */}
         <Card>
@@ -315,39 +311,28 @@ export function SettingsPage() {
             )}
           </div>
           <p className="text-[11px] text-white/30 leading-relaxed">
-            Keys stay on this PC only. Add yourself as a Test user on the consent screen while
-            the app is in Testing. Complete Backup still encrypts before upload.
+            OAuth Client ID/secret stay on this PC only. Add yourself as a Test user while the
+            app is in Testing. Complete Backup uploads full project archives to your Drive.
           </p>
         </Card>
 
-        {/* Encryption */}
+        {/* Simple backup model — no encryption keys */}
         <Card>
-          <CardTitle className="mb-1">Encryption</CardTitle>
-          <CardDescription className="mb-5">
-            AES-256-GCM · encrypt locally before upload
+          <CardTitle className="mb-1">Backup format</CardTitle>
+          <CardDescription className="mb-4">
+            Personal tool mode — plain archives, no passwords or encryption keys
           </CardDescription>
-          <div className="space-y-5">
-            <Toggle
-              checked={local.encryptionEnabled}
-              onChange={(v) => update({ encryptionEnabled: v })}
-              label="Encrypt backups"
-              description="Never upload plaintext. Always encrypt on-device first."
-            />
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <KeyRound className="h-5 w-5 text-white/40" />
-                <div>
-                  <div className="text-sm font-medium">Master password</div>
-                  <div className="text-xs text-white/40">
-                    {local.masterPasswordSet
-                      ? 'Master password is set'
-                      : 'Optional extra layer with recovery key'}
-                  </div>
-                </div>
-              </div>
-              <Button size="sm" variant="secondary" onClick={() => setPasswordModal(true)}>
-                {local.masterPasswordSet ? 'Reset' : 'Set password'}
-              </Button>
+          <div className="flex gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-3">
+            <HardDrive className="h-5 w-5 shrink-0 text-white/40 mt-0.5" />
+            <div className="text-[12px] text-white/45 leading-relaxed space-y-1.5">
+              <p>
+                Each Complete Backup is a normal <strong className="text-white/70">.avault ZIP</strong>{' '}
+                on Drive under <code className="text-white/55">AgentVault/Backups/&lt;project&gt;/</code>.
+              </p>
+              <p>
+                After a full PC reset: install → connect Drive → Cloud Projects → Restore all.
+                No vault password. No recovery key.
+              </p>
             </div>
           </div>
         </Card>
@@ -404,63 +389,6 @@ export function SettingsPage() {
           </div>
         </Card>
       </div>
-
-      <Modal
-        open={passwordModal}
-        onClose={() => {
-          setPasswordModal(false)
-          setPassword('')
-          setRecoveryKey(null)
-        }}
-        title="Master password"
-        description="Encrypts your device key. Store the recovery key safely."
-      >
-        {recoveryKey ? (
-          <div className="space-y-4">
-            <p className="text-sm text-white/50">
-              Save this recovery key. It will not be shown again.
-            </p>
-            <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 font-mono text-xs break-all text-amber-200">
-              {recoveryKey}
-            </div>
-            <Button
-              className="w-full"
-              onClick={() => {
-                setPasswordModal(false)
-                setRecoveryKey(null)
-                setPassword('')
-              }}
-            >
-              I have saved it
-            </Button>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <Input
-              type="password"
-              placeholder="Enter master password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-            <Button
-              className="w-full"
-              disabled={password.length < 8}
-              onClick={async () => {
-                const { recoveryKey: key } = await vault.setMasterPassword(password)
-                setRecoveryKey(key)
-                await qc.invalidateQueries({ queryKey: ['settings'] })
-                push({
-                  type: 'success',
-                  title: 'Master password set',
-                  message: 'Vault encryption upgraded',
-                })
-              }}
-            >
-              Set master password
-            </Button>
-          </div>
-        )}
-      </Modal>
     </div>
   )
 }

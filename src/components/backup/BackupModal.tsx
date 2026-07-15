@@ -58,7 +58,7 @@ export function BackupModal({
       description={
         linked.length > 1
           ? `${project.name} was used with multiple AI tools. Pick which ones to include — restore will bring back exactly these.`
-          : `We'll encrypt ${project.name} and the AI history linked to it.`
+          : `We'll package ${project.name} and the AI history linked to it.`
       }
       wide
     >
@@ -137,10 +137,10 @@ export function BackupModal({
 
         <p className="text-[11px] text-white/30 leading-relaxed">
           <strong className="text-white/50">Backup</strong> includes project
-          source + selected IDE histories (encrypted).{' '}
+          source + selected IDE histories as a plain archive.{' '}
           <strong className="text-white/50">Complete Backup</strong> packs the
           full project + every linked IDE and uploads to Google Drive so a new PC
-          can Scan Drive and restore everything.
+          can restore with one click — no password.
         </p>
 
         <div className="flex flex-wrap justify-end gap-2 pt-1">

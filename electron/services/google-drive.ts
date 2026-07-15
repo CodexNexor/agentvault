@@ -19,6 +19,7 @@ import { GOOGLE_OAUTH } from '../config/oauth.js'
  *
  * Built-in OAuth client is shipped with the app so users only click
  * "Connect Google Drive". Env vars can still override for development.
+ * Backups are plain .avault ZIP archives — no encryption keys.
  */
 
 const SCOPES = [...GOOGLE_OAUTH.scopes]
@@ -389,6 +390,8 @@ export class GoogleDriveService {
       driveFileId: '',
       metadataFileId: null,
       source: 'cloud',
+      format: 'plain-zip',
+      encrypted: false,
     }
 
     if (this.demoMode) {
@@ -440,8 +443,10 @@ export class GoogleDriveService {
       const metaBody = {
         ...catalogMeta,
         fileName,
-        version: 1,
+        version: 2,
         kind: 'agentvault-backup',
+        format: 'plain-zip',
+        encrypted: false,
         uploadedAt: new Date().toISOString(),
       }
       const metaRes = await this.drive.files.create({
@@ -522,27 +527,245 @@ export class GoogleDriveService {
   }
 
   /**
-   * Scan AgentVault / Metadata on Drive for all uploaded project backups.
-   * Fresh PC recovery entry point.
+   * True if Drive file starts with ZIP magic (PK). False for old AES JSON .avault.
    */
-  async scanDrive(): Promise<CloudBackupEntry[]> {
+  private async isPlainZipOnDrive(fileId: string): Promise<boolean> {
+    if (!this.drive) return false
+    if (fileId.startsWith('demo-')) {
+      const backupId = fileId.replace(/^demo-/, '')
+      const p = path.join(getAppPaths().cache, 'demo-cloud', `${backupId}.avault`)
+      if (!(await fs.pathExists(p))) return false
+      const fd = await fs.open(p, 'r')
+      try {
+        const buf = Buffer.alloc(4)
+        await fs.read(fd, buf, 0, 4, 0)
+        return buf[0] === 0x50 && buf[1] === 0x4b
+      } finally {
+        await fs.close(fd)
+      }
+    }
+    try {
+      const res = await this.drive.files.get(
+        { fileId, alt: 'media' },
+        {
+          responseType: 'arraybuffer',
+          headers: { Range: 'bytes=0-3' },
+        }
+      )
+      const data = res.data as ArrayBuffer | string | Buffer
+      const buf = Buffer.isBuffer(data)
+        ? data
+        : typeof data === 'string'
+          ? Buffer.from(data)
+          : Buffer.from(data)
+      // ZIP local file header
+      return buf.length >= 2 && buf[0] === 0x50 && buf[1] === 0x4b
+    } catch {
+      return false
+    }
+  }
+
+  private async trashDriveFile(fileId: string | null | undefined): Promise<void> {
+    if (!fileId || !this.drive || fileId.startsWith('demo-')) return
+    try {
+      await this.drive.files.update({
+        fileId,
+        requestBody: { trashed: true },
+      })
+    } catch (err) {
+      console.warn('[Drive] trash failed', fileId, err)
+    }
+  }
+
+  /**
+   * Remove old AES-encrypted backups + vault-escrow from Drive.
+   * Only plain-zip archives remain listed/restorable.
+   */
+  async purgeLegacyCloudBackups(): Promise<{ deleted: number; kept: number }> {
     if (this.demoMode) {
       const catalogPath = path.join(getAppPaths().keys, 'demo-cloud-catalog.json')
       let catalog: CloudBackupEntry[] = []
       if (await fs.pathExists(catalogPath)) {
         catalog = await fs.readJson(catalogPath)
       }
-      // Also surface local backups as if they were on Drive for testing
+      const kept: CloudBackupEntry[] = []
+      let deleted = 0
+      for (const c of catalog) {
+        const ok =
+          c.format === 'plain-zip' ||
+          c.encrypted === false ||
+          (c.driveFileId && (await this.isPlainZipOnDrive(c.driveFileId)))
+        if (ok) {
+          kept.push({ ...c, format: 'plain-zip', encrypted: false })
+        } else {
+          deleted++
+          const p = path.join(
+            getAppPaths().cache,
+            'demo-cloud',
+            `${c.backupId}.avault`
+          )
+          await fs.remove(p).catch(() => {})
+        }
+      }
+      await fs.writeJson(catalogPath, kept, { spaces: 2 })
+      await fs.remove(path.join(getAppPaths().keys, 'demo-vault-escrow.json')).catch(() => {})
+      return { deleted, kept: kept.length }
+    }
+
+    if (!this.drive) throw new Error('Connect Google Drive first')
+    const folders = await this.ensureFolderStructure()
+
+    // Trash vault-escrow key files (no longer used)
+    try {
+      const escrowList = await this.drive.files.list({
+        q: `'${folders.Metadata}' in parents and name='vault-escrow.json' and trashed=false`,
+        fields: 'files(id)',
+        pageSize: 10,
+      })
+      for (const f of escrowList.data.files || []) {
+        await this.trashDriveFile(f.id)
+      }
+    } catch {
+      /* optional */
+    }
+
+    const metaList = await this.drive.files.list({
+      q: `'${folders.Metadata}' in parents and trashed=false and mimeType='application/json'`,
+      fields: 'files(id, name)',
+      pageSize: 200,
+      spaces: 'drive',
+    })
+
+    let deleted = 0
+    let kept = 0
+
+    for (const f of metaList.data.files || []) {
+      if (!f.id || f.name === 'vault-escrow.json') {
+        if (f.id) {
+          await this.trashDriveFile(f.id)
+          deleted++
+        }
+        continue
+      }
+      try {
+        const res = await this.drive.files.get(
+          { fileId: f.id, alt: 'media' },
+          { responseType: 'text' as unknown as 'json' }
+        )
+        const raw =
+          typeof res.data === 'string' ? res.data : JSON.stringify(res.data)
+        const meta = JSON.parse(raw) as Partial<CloudBackupEntry> & {
+          kind?: string
+          driveFileId?: string
+        }
+        if (meta.kind === 'agentvault-vault-escrow') {
+          await this.trashDriveFile(f.id)
+          deleted++
+          continue
+        }
+        if (!meta.backupId || !meta.projectName) {
+          await this.trashDriveFile(f.id)
+          deleted++
+          continue
+        }
+
+        const markedPlain =
+          meta.format === 'plain-zip' || meta.encrypted === false
+        let isPlain = markedPlain
+        if (!isPlain && meta.driveFileId) {
+          isPlain = await this.isPlainZipOnDrive(meta.driveFileId)
+        }
+        // Unmarked old encrypted JSON avaults
+        if (!isPlain && meta.encrypted === true) {
+          isPlain = false
+        }
+        if (!isPlain && !meta.driveFileId) {
+          // no archive id — junk meta
+          await this.trashDriveFile(f.id)
+          deleted++
+          continue
+        }
+        if (!isPlain) {
+          await this.trashDriveFile(meta.driveFileId)
+          await this.trashDriveFile(f.id)
+          deleted++
+          continue
+        }
+        kept++
+      } catch (err) {
+        console.warn('[Drive] purge skip', f.name, err)
+      }
+    }
+
+    // Also walk Backups/** for orphan .avault that are not ZIP
+    try {
+      const projectFolders = await this.drive.files.list({
+        q: `'${folders.Backups}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`,
+        fields: 'files(id, name)',
+        pageSize: 100,
+      })
+      for (const folder of projectFolders.data.files || []) {
+        if (!folder.id) continue
+        const files = await this.drive.files.list({
+          q: `'${folder.id}' in parents and trashed=false`,
+          fields: 'files(id, name)',
+          pageSize: 50,
+        })
+        for (const file of files.data.files || []) {
+          if (!file.id || !file.name) continue
+          if (!/\.avault$/i.test(file.name) && !/\.zip$/i.test(file.name)) continue
+          const plain = await this.isPlainZipOnDrive(file.id)
+          if (!plain) {
+            await this.trashDriveFile(file.id)
+            deleted++
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('[Drive] orphan purge', err)
+    }
+
+    database.addActivity({
+      type: 'info',
+      title: 'Removed old encrypted cloud backups',
+      message: `Deleted ${deleted} legacy item(s); kept ${kept} plain ZIP backup(s)`,
+      level: 'success',
+    })
+
+    return { deleted, kept }
+  }
+
+  /**
+   * Scan Drive for project backups — **plain ZIP only**.
+   * Old encrypted backups are purged (trashed) and never shown.
+   */
+  async scanDrive(): Promise<CloudBackupEntry[]> {
+    // Always clean legacy encrypted archives first so Cloud Projects stays clean
+    try {
+      await this.purgeLegacyCloudBackups()
+    } catch (err) {
+      console.warn('[Drive] legacy purge during scan:', err)
+    }
+
+    if (this.demoMode) {
+      const catalogPath = path.join(getAppPaths().keys, 'demo-cloud-catalog.json')
+      let catalog: CloudBackupEntry[] = []
+      if (await fs.pathExists(catalogPath)) {
+        catalog = await fs.readJson(catalogPath)
+      }
+      // Only plain-zip local backups
       const local = database.getBackups()
       for (const b of local) {
+        if (b.encrypted) continue
         if (!catalog.find((c) => c.backupId === b.id)) {
-          // seed demo catalog from local if file exists
           if (b.localPath && (await fs.pathExists(b.localPath))) {
             const cloudCopy = path.join(getAppPaths().cache, 'demo-cloud', `${b.id}.avault`)
             await fs.ensureDir(path.dirname(cloudCopy))
             if (!(await fs.pathExists(cloudCopy))) {
               await fs.copy(b.localPath, cloudCopy)
             }
+            // Skip if not ZIP
+            if (!(await this.isPlainZipOnDrive(`demo-${b.id}`))) continue
             catalog.push({
               backupId: b.id,
               projectId: b.projectId,
@@ -558,15 +781,20 @@ export class GoogleDriveService {
               driveFileId: b.cloudPath || `demo-${b.id}`,
               metadataFileId: null,
               source: b.location === 'local' ? 'local' : 'both',
+              format: 'plain-zip',
+              encrypted: false,
             })
           }
         }
       }
+      catalog = catalog.filter(
+        (c) => c.format === 'plain-zip' || c.encrypted === false
+      )
       await fs.writeJson(catalogPath, catalog, { spaces: 2 })
       database.addActivity({
         type: 'info',
         title: 'Drive scan complete',
-        message: `Found ${catalog.length} cloud project backup(s) (demo catalog)`,
+        message: `Found ${catalog.length} plain ZIP cloud backup(s)`,
         level: 'success',
       })
       return catalog.sort(
@@ -586,7 +814,7 @@ export class GoogleDriveService {
 
     const entries: CloudBackupEntry[] = []
     for (const f of metaList.data.files || []) {
-      if (!f.id) continue
+      if (!f.id || f.name === 'vault-escrow.json') continue
       try {
         const res = await this.drive.files.get(
           { fileId: f.id, alt: 'media' },
@@ -598,8 +826,20 @@ export class GoogleDriveService {
           driveFileId?: string
           backupId?: string
           projectName?: string
+          kind?: string
         }
+        if (meta.kind === 'agentvault-vault-escrow') continue
         if (!meta.backupId || !meta.projectName) continue
+
+        // Only list plain ZIP backups
+        const markedPlain =
+          meta.format === 'plain-zip' || meta.encrypted === false
+        let isPlain = markedPlain
+        if (!isPlain && meta.driveFileId) {
+          isPlain = await this.isPlainZipOnDrive(meta.driveFileId)
+        }
+        if (!isPlain) continue
+
         entries.push({
           backupId: meta.backupId,
           projectId: meta.projectId || meta.backupId,
@@ -615,23 +855,56 @@ export class GoogleDriveService {
           driveFileId: meta.driveFileId || '',
           metadataFileId: f.id,
           source: 'cloud',
+          format: 'plain-zip',
+          encrypted: false,
         })
       } catch (err) {
         console.warn('[Drive] skip meta', f.name, err)
       }
     }
 
-    // Fallback: list .avault files under Backups if metadata empty
+    // Fallback: list plain .avault under project folders if metadata empty
     if (entries.length === 0) {
-      const files = await this.drive.files.list({
+      const projectFolders = await this.drive.files.list({
         q: `'${folders.Backups}' in parents and trashed=false`,
-        fields: 'files(id, name, createdTime, size)',
+        fields: 'files(id, name, mimeType, createdTime, size)',
         pageSize: 100,
       })
-      // Also search children recursively is hard; list project folders
-      for (const folder of files.data.files || []) {
+      for (const folder of projectFolders.data.files || []) {
         if (!folder.id) continue
-        if (folder.name?.endsWith('.avault') || folder.name?.endsWith('.zip')) {
+        if (
+          folder.mimeType === 'application/vnd.google-apps.folder'
+        ) {
+          const kids = await this.drive.files.list({
+            q: `'${folder.id}' in parents and trashed=false`,
+            fields: 'files(id, name, createdTime, size)',
+            pageSize: 50,
+          })
+          for (const file of kids.data.files || []) {
+            if (!file.id || !file.name?.match(/\.avault$|\.zip$/i)) continue
+            if (!(await this.isPlainZipOnDrive(file.id))) continue
+            const id = path.basename(file.name, path.extname(file.name))
+            entries.push({
+              backupId: id,
+              projectId: id,
+              projectName: folder.name || file.name.replace(/\.avault$|\.zip$/i, ''),
+              projectPath: null,
+              agents: [],
+              chatCount: 0,
+              sizeBytes: Number(file.size) || 0,
+              compressedBytes: Number(file.size) || 0,
+              framework: null,
+              createdAt: file.createdTime || new Date().toISOString(),
+              computerName: '',
+              driveFileId: file.id,
+              metadataFileId: null,
+              source: 'cloud',
+              format: 'plain-zip',
+              encrypted: false,
+            })
+          }
+        } else if (folder.name?.match(/\.avault$|\.zip$/i)) {
+          if (!(await this.isPlainZipOnDrive(folder.id))) continue
           const id = path.basename(folder.name, path.extname(folder.name))
           entries.push({
             backupId: id,
@@ -648,6 +921,8 @@ export class GoogleDriveService {
             driveFileId: folder.id,
             metadataFileId: null,
             source: 'cloud',
+            format: 'plain-zip',
+            encrypted: false,
           })
         }
       }
@@ -656,7 +931,7 @@ export class GoogleDriveService {
     database.addActivity({
       type: 'info',
       title: 'Drive scan complete',
-      message: `Found ${entries.length} project backup(s) on Google Drive`,
+      message: `Found ${entries.length} plain ZIP project backup(s) on Google Drive`,
       level: 'success',
     })
 
@@ -676,6 +951,15 @@ export class GoogleDriveService {
       await this.downloadBackup(entry.driveFileId, localPath)
     }
 
+    // Reject cached legacy AES files
+    const { encryption } = await import('./encryption.js')
+    if (await encryption.looksLikeLegacyEncrypted(localPath)) {
+      await fs.remove(localPath).catch(() => {})
+      throw new Error(
+        'This cloud backup is an old encrypted format and was removed from Drive. Run Complete Backup again for a plain ZIP.'
+      )
+    }
+
     // Upsert into local DB
     const existing = database.getBackup(entry.backupId)
     if (!existing) {
@@ -689,7 +973,7 @@ export class GoogleDriveService {
         sizeBytes: entry.sizeBytes,
         compressedBytes: entry.compressedBytes || (await fs.stat(localPath)).size,
         checksum: 'cloud-import',
-        encrypted: true,
+        encrypted: false,
         location: 'both',
         cloudPath: entry.driveFileId,
         localPath,

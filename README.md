@@ -6,7 +6,7 @@
 
 <p align="center">
   <strong>Never lose your AI coding history again.</strong><br/>
-  Encrypted backup &amp; restore for <em>Codex · Claude Code · OpenCode · Aider · Continue · Gemini CLI</em>
+  Full project + IDE history backup &amp; restore for <em>Codex · Claude Code · OpenCode · Aider · Continue · Gemini CLI</em>
 </p>
 
 <p align="center">
@@ -33,12 +33,13 @@ Switch laptops or reinstall the OS and those histories vanish.
 
 **AgentVault** backs up:
 
-- ✅ Full project source (encrypted `.avault`)
+- ✅ Full project source (plain `.avault` ZIP)
 - ✅ Conversation history for every linked agent
 - ✅ Settings / configs where supported
 - ✅ One-click restore + path repair across machines
+- ✅ Works after full PC reset — **no vault password / encryption keys**
 
-Built for developers who use **local-first AI agents**.
+Built as a **personal local tool** for developers who use local-first AI agents.
 
 ---
 
@@ -59,21 +60,22 @@ agentvault
 ### Debian / Ubuntu (.deb)
 
 ```bash
-# Download latest .deb from Releases, then:
-sudo dpkg -i agentvault_*_amd64.deb
-# or
-sudo apt install ./agentvault_*_amd64.deb
+# Latest release .deb:
+curl -fL -o /tmp/agentvault.deb \
+  https://github.com/CodexNexor/agentvault/releases/latest/download/agentvault_1.0.2_amd64.deb
+sudo dpkg -i /tmp/agentvault.deb
 ```
+
+Or download from [Releases](https://github.com/CodexNexor/agentvault/releases).
 
 ### Windows
 
-1. Download **AgentVault-Setup-*.exe** from [Releases](https://github.com/CodexNexor/agentvault/releases)
-2. Run the installer (one-click NSIS)
-3. Launch **AgentVault** from the Start menu
+1. Download **AgentVault-Portable-*.exe** (or Setup) from [Releases](https://github.com/CodexNexor/agentvault/releases)
+2. Run and launch **AgentVault**
 
 ### macOS
 
-Download the `.dmg` from [Releases](https://github.com/CodexNexor/agentvault/releases) (Apple Silicon / Intel when published).
+Download the `.dmg` from [Releases](https://github.com/CodexNexor/agentvault/releases) when published.
 
 ### From source
 
@@ -81,8 +83,8 @@ Download the `.dmg` from [Releases](https://github.com/CodexNexor/agentvault/rel
 git clone https://github.com/CodexNexor/agentvault.git
 cd agentvault
 npm install
-npm run dev          # development
-npm run package:linux   # produce .deb / AppImage / tar.gz
+npm run dev            # development
+npm run package:linux  # produce .deb / AppImage / tar.gz
 ```
 
 ---
@@ -91,24 +93,26 @@ npm run package:linux   # produce .deb / AppImage / tar.gz
 
 | Feature | Description |
 |--------|-------------|
-| **Complete Backup** | Project files + all linked IDE histories → encrypted → optional Drive |
-| **Cloud Projects** | List Drive backups → one click download, decrypt, unzip, restore |
+| **Complete Backup** | Project files + all linked IDE histories → plain ZIP → Google Drive |
+| **Cloud Projects** | List Drive backups → one click download, unzip, restore |
 | **Multi-IDE** | Same project on Codex + Claude? Pick tools per backup |
 | **Path repair** | Restores chats on a new machine path |
 | **BYO Google OAuth** | Paste your Desktop Client ID + secret (no shared 100-user limit) |
-| **AES-256-GCM** | Encrypt locally before upload |
-| **`.avault` format** | Encrypted ZIP of workspace + agent data |
+| **`.avault` format** | Plain ZIP of workspace + agent data (no encryption keys) |
+| **Legacy cleanup** | Old AES-encrypted cloud backups are purged; only ZIP archives list |
 
 ---
 
 ## After PC reset
 
 1. Install Codex / Claude / your agents  
-2. Install AgentVault  
+2. Install AgentVault (`curl … \| bash` or `.deb`)  
 3. **Settings** → paste Google Desktop OAuth Client ID + secret → **Connect**  
 4. **Cloud Projects** → **Restore all**  
 5. Project files land in `~/Downloads/AgentVault-Restores/<name>` (or choose a folder)  
 6. IDE histories restore into `~/.codex`, `~/.claude`, etc. automatically  
+
+No vault password. Connect Drive → restore.
 
 ---
 
@@ -125,12 +129,12 @@ Plugin architecture: add more via `AgentProvider`.
 
 ---
 
-## Security
+## Privacy / Drive
 
-- Encryption **before** cloud upload  
-- Optional master password + recovery key  
-- Your Google OAuth secrets stay on **your** machine when using BYO mode  
-- Prefer scope `drive.file` (only app-created files)
+- Backups are **your** plain ZIP archives on **your** Google Drive  
+- OAuth Client ID/secret stay on **your** machine (BYO Desktop OAuth)  
+- Prefer scope `drive.file` (only app-created files)  
+- Personal tool — not a multi-tenant SaaS vault
 
 ---
 
@@ -141,6 +145,8 @@ npm run dev              # Electron + Vite
 npm run package:linux    # deb + tar.gz + AppImage
 npm run package:win      # Windows (on Windows or CI)
 ```
+
+Current release: **v1.0.2**
 
 ---
 

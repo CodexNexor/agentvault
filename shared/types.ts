@@ -242,6 +242,12 @@ export interface CloudBackupEntry {
   metadataFileId: string | null
   /** true when only in cloud catalog, not yet on this machine */
   source: 'cloud' | 'local' | 'both'
+  /**
+   * plain-zip = current format (no encryption).
+   * Older encrypted AES archives are purged and never listed.
+   */
+  format?: 'plain-zip' | 'legacy-encrypted'
+  encrypted?: boolean
 }
 
 export interface RestoreOptions {
@@ -277,7 +283,7 @@ export interface IpcApi {
     selectedAgents?: AgentId[],
     options?: { complete?: boolean; forceCloud?: boolean }
   ) => Promise<string>
-  /** Full project files + all linked IDE histories → encrypt → Drive */
+  /** Full project files + all linked IDE histories → Drive */
   completeBackup: (projectId: string) => Promise<string>
   cancelBackup: (backupId: string) => Promise<void>
   getBackups: (projectId?: string) => Promise<BackupMeta[]>
@@ -314,13 +320,18 @@ export interface IpcApi {
     clientSecret: string
   ) => Promise<{ ok: boolean }>
   clearGoogleOAuthCredentials: () => Promise<void>
-  /** Scan AgentVault folder on Drive for all uploaded projects/backups */
+  /** Scan AgentVault folder on Drive for plain-zip project backups only */
   scanDrive: () => Promise<CloudBackupEntry[]>
   getCloudBackups: () => Promise<CloudBackupEntry[]>
   /** Download cloud backup into local catalog then ready for restore */
   importFromDrive: (backupId: string) => Promise<BackupMeta>
+  /**
+   * Delete old AES-encrypted cloud backups + vault-escrow keys from Drive.
+   * Keeps only plain ZIP archives.
+   */
+  purgeLegacyCloudBackups: () => Promise<{ deleted: number; kept: number }>
 
-  // Security
+  // Legacy no-ops (no encryption keys in personal tool mode)
   setMasterPassword: (password: string) => Promise<{ recoveryKey: string }>
   unlockWithPassword: (password: string) => Promise<boolean>
   unlockWithRecoveryKey: (key: string) => Promise<boolean>

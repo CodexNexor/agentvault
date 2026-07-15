@@ -109,22 +109,24 @@ export class RestoreEngine {
         }
       }
 
-      // Decrypt
+      // Prepare ZIP for extract (.avault is plain zip — no keys)
       this.emit({
         restoreId,
         backupId,
         projectName: backup.projectName,
         stage: 'decrypting',
         progress: 25,
-        message: 'Decrypting archive…',
+        message: 'Opening archive…',
       })
 
       const zipPath = path.join(workDir, 'archive.zip')
-      if (backup.encrypted || localPath.endsWith('.avault')) {
-        await encryption.decryptFile(localPath, zipPath)
-      } else {
-        await fs.copy(localPath, zipPath)
+      if (await encryption.looksLikeLegacyEncrypted(localPath)) {
+        throw new Error(
+          'This backup was made with the old encryption format and cannot be opened. ' +
+            'Run Complete Backup again on the original machine (new backups need no password).'
+        )
       }
+      await fs.copy(localPath, zipPath)
 
       // Extract
       this.emit({
@@ -329,6 +331,7 @@ export class RestoreEngine {
       }, 3000)
     }
   }
+
 }
 
 export const restoreEngine = new RestoreEngine()

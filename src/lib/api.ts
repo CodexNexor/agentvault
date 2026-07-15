@@ -152,7 +152,7 @@ let demoSettings: AppSettings = {
   autoBackupInterval: '15m',
   theme: 'dark',
   notifications: true,
-  encryptionEnabled: true,
+  encryptionEnabled: false,
   masterPasswordSet: false,
   googleConnected: false,
   googleEmail: null,
@@ -172,7 +172,7 @@ let demoActivity: ActivityEvent[] = [
     id: 'a1',
     type: 'backup_complete',
     title: 'Backup complete',
-    message: 'AgentVault · 12.4 MB · encrypted',
+    message: 'AgentVault · 12.4 MB · archive',
     projectId: 'p1',
     projectName: 'AgentVault',
     timestamp: new Date(Date.now() - 3600000).toISOString(),
@@ -209,7 +209,7 @@ let demoBackups: BackupMeta[] = [
     sizeBytes: 48_200_000,
     compressedBytes: 12_400_000,
     checksum: 'abc123',
-    encrypted: true,
+    encrypted: false,
     location: 'local',
     cloudPath: null,
     localPath: '/tmp/b1.avault',
@@ -231,7 +231,7 @@ let demoBackups: BackupMeta[] = [
     sizeBytes: 126_400_000,
     compressedBytes: 31_200_000,
     checksum: 'def456',
-    encrypted: true,
+    encrypted: false,
     location: 'both',
     cloudPath: 'demo://b2',
     localPath: '/tmp/b2.avault',
@@ -253,7 +253,7 @@ let demoBackups: BackupMeta[] = [
     sizeBytes: 44_000_000,
     compressedBytes: 11_100_000,
     checksum: 'ghi789',
-    encrypted: true,
+    encrypted: false,
     location: 'local',
     cloudPath: null,
     localPath: '/tmp/b3.avault',
@@ -444,6 +444,11 @@ export const vault = {
     return b
   },
 
+  async purgeLegacyCloudBackups(): Promise<{ deleted: number; kept: number }> {
+    if (hasElectron()) return api().purgeLegacyCloudBackups()
+    return { deleted: 0, kept: demoBackups.filter((b) => !b.encrypted).length }
+  },
+
   async search(query: string): Promise<SearchResult[]> {
     if (hasElectron()) return api().search(query)
     await delay(150)
@@ -537,10 +542,9 @@ export const vault = {
     }
   },
 
-  async setMasterPassword(password: string): Promise<{ recoveryKey: string }> {
-    if (hasElectron()) return api().setMasterPassword(password)
-    demoSettings.masterPasswordSet = true
-    return { recoveryKey: 'AV-DEMO-RECOVERY-KEY-' + Math.random().toString(36).slice(2, 10).toUpperCase() }
+  async setMasterPassword(_password: string): Promise<{ recoveryKey: string }> {
+    if (hasElectron()) return api().setMasterPassword(_password)
+    return { recoveryKey: '' }
   },
 
   async getStorageAnalytics(): Promise<StorageAnalytics> {
@@ -595,7 +599,7 @@ export const vault = {
       sizeBytes: 10_000_000,
       compressedBytes: 3_000_000,
       checksum: 'import',
-      encrypted: true,
+      encrypted: false,
       location: 'local',
       cloudPath: null,
       localPath: filePath,
@@ -622,7 +626,7 @@ export const vault = {
       backupId,
       valid: true,
       checksumMatch: true,
-      encrypted: true,
+      encrypted: false,
       errors: [],
     }
   },
