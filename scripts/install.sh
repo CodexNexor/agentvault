@@ -61,8 +61,14 @@ JSON=$(curl -fsSL "$API") || {
   exit 1
 }
 
-# Prefer .deb when sudo works and dpkg exists
-DEB_URL=$(echo "$JSON" | grep -oE 'https://[^"]+\.deb' | head -1 || true)
+TAG=$(echo "$JSON" | grep -oE '"tag_name"[[:space:]]*:[[:space:]]*"[^"]+"' | head -1 | sed 's/.*"\([^"]*\)"$/\1/')
+echo "→ Release: ${TAG:-unknown}"
+
+# Prefer arch-specific .deb from this release
+DEB_URL=$(echo "$JSON" | grep -oE "https://[^\"]+agentvault_[^\"]*_${ARCH_TAG}\\.deb" | head -1 || true)
+if [ -z "$DEB_URL" ]; then
+  DEB_URL=$(echo "$JSON" | grep -oE 'https://[^"]+\.deb' | head -1 || true)
+fi
 TAR_URL=$(echo "$JSON" | grep -oE "https://[^\"]+AgentVault-linux-${ARCH_TAG}[^\"]*\\.tar\\.gz" | head -1 || true)
 if [ -z "$TAR_URL" ]; then
   TAR_URL=$(echo "$JSON" | grep -oE "https://[^\"]+linux[^\"]*${ARCH_ALT}[^\"]*\\.tar\\.gz" | head -1 || true)
