@@ -2,63 +2,136 @@ name: Release
 
 on:
   push:
-    tags:
-      - 'v*'
+    tags: ['v*']
   workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag (e.g. v1.0.1). Leave empty for artifacts only.'
+        required: false
+        default: ''
 
 permissions:
   contents: write
 
 jobs:
-  release:
-    strategy:
-      matrix:
-        include:
-          - os: ubuntu-latest
-            platform: linux
-          - os: windows-latest
-            platform: win
-          - os: macos-latest
-            platform: mac
-    runs-on: ${{ matrix.os }}
+  windows:
+    name: Windows .exe
+    runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: '22'
           cache: npm
 
-      - run: npm ci
+      - name: Install dependencies
+        run: npm ci
 
-      - name: Build
+      - name: Build app
         run: npm run build
+        env:
+          # Skip optional native rebuild noise
+          CSC_IDENTITY_AUTO_DISCOVERY: false
 
-      - name: Package Linux
-        if: matrix.platform == 'linux'
-        run: |
-          npx electron-builder --linux deb tar.gz AppImage --x64
-          tar -C release/linux-unpacked -czf release/AgentVault-linux-amd64.tar.gz .
+      - name: Package Windows NSIS + Portable
+        run: npx electron-builder --win nsis portable --x64 --publish never
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CSC_IDENTITY_AUTO_DISCOVERY: false
 
-      - name: Package Windows
-        if: matrix.platform == 'win'
-        run: npx electron-builder --win nsis portable --x64
+      - name: List release folder
+        shell: bash
+        run: ls -la release/ || dir release
 
-      - name: Package macOS
-        if: matrix.platform == 'mac'
-        run: npx electron-builder --mac dmg zip --x64 --arm64
-        continue-on-error: true
+      - name: Upload Windows artifacts (Actions)
+        uses: actions/upload-artifact@v4
+        with:
+          name: agentvault-windows
+          path: |
+            release/*.exe
+            release/*.blockmap
+          if-no-files-found: error
 
-      - name: Upload artifacts
-        uses: softprops/action-gh-release@v2
+      - name: Attach .exe to GitHub Release
         if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            release/*.exe
+          fail_on_unmatched_files: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  linux:
+    name: Linux packages
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Package Linux
+        run: |
+          npx electron-builder --linux deb tar.gz AppImage --x64 --publish never
+          tar -C release/linux-unpacked -czf release/AgentVault-linux-amd64.tar.gz .
+      - uses: actions/upload-artifact@v4
+        with:
+          name: agentvault-linux
+          path: |
+            release/*.deb
+            release/*.AppImage
+            release/AgentVault-linux-amd64.tar.gz
+            release/agentvault_*.tar.gz
+      - name: Attach Linux to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
         with:
           files: |
             release/*.deb
             release/*.AppImage
-            release/*.tar.gz
-            release/*.exe
+            release/AgentVault-linux-amd64.tar.gz
+          fail_on_unmatched_files: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  macos:
+    name: macOS packages
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+      - name: Package macOS
+        run: npx electron-builder --mac dmg zip --x64 --arm64 --publish never
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+        continue-on-error: true
+      - uses: actions/upload-artifact@v4
+        with:
+          name: agentvault-macos
+          path: |
             release/*.dmg
             release/*.zip
+          if-no-files-found: ignore
+      - name: Attach macOS to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            release/*.dmg
+            release/*.zip
+          fail_on_unmatched_files: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

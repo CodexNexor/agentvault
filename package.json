@@ -2,7 +2,7 @@
   "name": "agentvault",
   "productName": "AgentVault",
   "private": false,
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Never lose your AI coding history again. Encrypted backup & restore for Codex, Claude Code, OpenCode, Aider, Continue & Gemini CLI — full project files + chat history across machines.",
   "author": {
     "name": "CodexNexor",
@@ -64,21 +64,44 @@
     "asar": true,
     "mac": {
       "category": "public.app-category.developer-tools",
-      "target": ["dmg", "zip"],
+      "target": [
+        "dmg",
+        "zip"
+      ],
       "artifactName": "AgentVault-${version}-mac-${arch}.${ext}"
     },
     "win": {
-      "target": ["nsis", "portable"],
-      "artifactName": "AgentVault-Setup-${version}.${ext}"
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        },
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        }
+      ],
+      "artifactName": "AgentVault-${version}-win-${arch}.${ext}",
+      "signAndEditExecutable": false
     },
     "nsis": {
       "oneClick": true,
       "perMachine": false,
       "allowToChangeInstallationDirectory": false,
-      "shortcutName": "AgentVault"
+      "shortcutName": "AgentVault",
+      "artifactName": "AgentVault-Setup-${version}.${ext}",
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    },
+    "portable": {
+      "artifactName": "AgentVault-Portable-${version}.${ext}"
     },
     "linux": {
-      "target": ["deb", "AppImage", "tar.gz"],
+      "target": [
+        "deb",
+        "AppImage",
+        "tar.gz"
+      ],
       "category": "Development",
       "maintainer": "CodexNexor <hello@agentvault.dev>",
       "vendor": "AgentVault",

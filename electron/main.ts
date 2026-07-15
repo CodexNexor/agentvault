@@ -12,18 +12,23 @@ import { registerIpcHandlers } from './ipc.js'
 import { agentRegistry } from './agents/registry.js'
 import { projectScanner } from './services/scanner.js'
 
-// CJS globals provided by the esbuild → CommonJS bundle
 declare const __dirname: string
 
-// Reduce GPU / multi-instance crashes on Linux Wayland
-app.disableHardwareAcceleration()
-app.commandLine.appendSwitch('disable-gpu')
-app.commandLine.appendSwitch('no-sandbox')
+// Stability on Linux (Wayland / multi-GPU)
+if (process.platform === 'linux') {
+  app.disableHardwareAcceleration()
+  app.commandLine.appendSwitch('disable-gpu')
+  // Only if sandbox binary perms wrong; chrome-sandbox should be setuid in packages
+  if (process.env.AGENTVAULT_NO_SANDBOX === '1') {
+    app.commandLine.appendSwitch('no-sandbox')
+  }
+}
 
-// Single instance — prevent OOM from many scans
+// Single instance — MUST exit immediately if another is running
 const gotLock = app.requestSingleInstanceLock()
 if (!gotLock) {
   app.quit()
+  process.exit(0)
 }
 
 process.env.APP_ROOT = path.join(__dirname, '..')
@@ -44,6 +49,13 @@ function resolvePreload(): string {
 function createWindow(): void {
   nativeTheme.themeSource = 'dark'
 
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    if (mainWindow.isMinimized()) mainWindow.restore()
+    mainWindow.show()
+    mainWindow.focus()
+    return
+  }
+
   mainWindow = new BrowserWindow({
     width: 1280,
     height: 840,
@@ -51,9 +63,8 @@ function createWindow(): void {
     minHeight: 600,
     backgroundColor: '#090909',
     title: 'AgentVault',
-    titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
-    trafficLightPosition: { x: 16, y: 16 },
     show: false,
+    autoHideMenuBar: true,
     webPreferences: {
       preload: resolvePreload(),
       contextIsolation: true,
@@ -64,21 +75,19 @@ function createWindow(): void {
   })
 
   const show = () => {
-    if (!mainWindow) return
-    if (!mainWindow.isVisible()) mainWindow.show()
+    if (!mainWindow || mainWindow.isDestroyed()) return
+    mainWindow.show()
     mainWindow.focus()
   }
 
   mainWindow.once('ready-to-show', show)
-  // Fallback if ready-to-show never fires
-  setTimeout(show, 2500)
+  setTimeout(show, 2000)
 
   mainWindow.webContents.on('did-fail-load', (_e, code, desc, url) => {
     console.error('[AgentVault] did-fail-load', code, desc, url)
-    // Retry once from asar dist
     if (mainWindow && !VITE_DEV_SERVER_URL) {
       const html = path.join(RENDERER_DIST, 'index.html')
-      if (fs.existsSync(html)) mainWindow.loadFile(html)
+      if (fs.existsSync(html)) void mainWindow.loadFile(html)
     }
   })
 
@@ -88,13 +97,11 @@ function createWindow(): void {
   })
 
   if (VITE_DEV_SERVER_URL) {
-    mainWindow.loadURL(VITE_DEV_SERVER_URL)
+    void mainWindow.loadURL(VITE_DEV_SERVER_URL)
   } else {
     const html = path.join(RENDERER_DIST, 'index.html')
-    if (!fs.existsSync(html)) {
-      console.error('[AgentVault] Missing UI at', html)
-    }
-    mainWindow.loadFile(html)
+    console.log('[AgentVault] loading UI', html, fs.existsSync(html))
+    void mainWindow.loadFile(html)
   }
 
   backupEngine.setMainWindow(mainWindow)
@@ -113,10 +120,9 @@ async function bootstrap(): Promise<void> {
   await googleDrive.initialize()
   registerIpcHandlers(() => mainWindow)
 
-  // Delay heavy scan so UI paints first
   setTimeout(() => {
     void runBackgroundScan()
-  }, 3000)
+  }, 2500)
 }
 
 async function runBackgroundScan(): Promise<void> {
@@ -137,7 +143,7 @@ async function runBackgroundScan(): Promise<void> {
 }
 
 app.on('second-instance', () => {
-  if (mainWindow) {
+  if (mainWindow && !mainWindow.isDestroyed()) {
     if (mainWindow.isMinimized()) mainWindow.restore()
     mainWindow.show()
     mainWindow.focus()
@@ -152,12 +158,16 @@ app
     try {
       await bootstrap()
     } catch (err) {
-      console.error('[AgentVault] Bootstrap error (continuing to open UI):', err)
+      console.error('[AgentVault] Bootstrap error (opening UI anyway):', err)
     }
     createWindow()
 
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) createWindow()
+      else if (mainWindow) {
+        mainWindow.show()
+        mainWindow.focus()
+      }
     })
   })
   .catch((err) => {
@@ -166,11 +176,21 @@ app
 
 app.on('window-all-closed', () => {
   void autoBackupWatcher.stop()
-  database.close()
-  if (process.platform !== 'darwin') app.quit()
+  try {
+    database.close()
+  } catch {
+    /* ignore */
+  }
+  if (process.platform !== 'darwin') {
+    app.quit()
+  }
 })
 
 app.on('before-quit', () => {
   void autoBackupWatcher.stop()
-  database.close()
+  try {
+    database.close()
+  } catch {
+    /* ignore */
+  }
 })
