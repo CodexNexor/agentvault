@@ -1,0 +1,145 @@
+{
+  "name": "agentvault",
+  "productName": "AgentVault",
+  "private": false,
+  "version": "1.0.0",
+  "description": "Never lose your AI coding history again. Encrypted backup & restore for Codex, Claude Code, OpenCode, Aider, Continue & Gemini CLI — full project files + chat history across machines.",
+  "author": {
+    "name": "CodexNexor",
+    "email": "hello@agentvault.dev"
+  },
+  "license": "MIT",
+  "homepage": "https://github.com/CodexNexor/agentvault",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/CodexNexor/agentvault.git"
+  },
+  "bugs": {
+    "url": "https://github.com/CodexNexor/agentvault/issues"
+  },
+  "keywords": [
+    "ai",
+    "coding-agent",
+    "codex",
+    "claude-code",
+    "opencode",
+    "aider",
+    "backup",
+    "restore",
+    "electron",
+    "developer-tools",
+    "agentvault",
+    "ai-coding"
+  ],
+  "type": "module",
+  "main": "dist-electron/main.cjs",
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "dev:web": "vite",
+    "build": "tsc -b && vite build && node scripts/build-electron.mjs",
+    "build:electron": "npm run build && electron-builder",
+    "package:linux": "npm run build && electron-builder --linux deb tar.gz AppImage --x64 && tar -C release/linux-unpacked -czf release/AgentVault-linux-amd64.tar.gz .",
+    "package:win": "npm run build && electron-builder --win nsis portable --x64",
+    "package:release": "bash scripts/package-release.sh",
+    "lint": "oxlint",
+    "preview": "vite preview",
+    "postinstall": "electron-builder install-app-deps || true"
+  },
+  "build": {
+    "appId": "com.agentvault.app",
+    "productName": "AgentVault",
+    "copyright": "Copyright © AgentVault",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "dist/**/*",
+      "dist-electron/**/*",
+      "package.json"
+    ],
+    "extraMetadata": {
+      "main": "dist-electron/main.cjs"
+    },
+    "asar": true,
+    "mac": {
+      "category": "public.app-category.developer-tools",
+      "target": ["dmg", "zip"],
+      "artifactName": "AgentVault-${version}-mac-${arch}.${ext}"
+    },
+    "win": {
+      "target": ["nsis", "portable"],
+      "artifactName": "AgentVault-Setup-${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": false,
+      "shortcutName": "AgentVault"
+    },
+    "linux": {
+      "target": ["deb", "AppImage", "tar.gz"],
+      "category": "Development",
+      "maintainer": "CodexNexor <hello@agentvault.dev>",
+      "vendor": "AgentVault",
+      "synopsis": "Encrypted AI coding workspace backup",
+      "description": "Backup and restore AI coding agent history and project files across machines. Supports Codex CLI, Claude Code, OpenCode, Aider, Continue, Gemini CLI.",
+      "executableName": "agentvault",
+      "artifactName": "agentvault_${version}_${arch}.${ext}"
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "CodexNexor",
+        "repo": "agentvault"
+      }
+    ]
+  },
+  "dependencies": {
+    "@tanstack/react-query": "^5.101.2",
+    "adm-zip": "^0.6.0",
+    "archiver": "^8.0.0",
+    "chokidar": "^5.0.0",
+    "clsx": "^2.1.1",
+    "date-fns": "^4.4.0",
+    "extract-zip": "^2.0.1",
+    "framer-motion": "^12.42.2",
+    "fs-extra": "^11.3.6",
+    "googleapis": "^173.0.0",
+    "ignore": "^7.0.6",
+    "lucide-react": "^1.24.0",
+    "mime-types": "^3.0.2",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "react-router-dom": "^7.18.1",
+    "tailwind-merge": "^3.6.0",
+    "uuid": "^14.0.1",
+    "zod": "^4.4.3",
+    "zustand": "^5.0.14"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.2",
+    "@types/adm-zip": "^0.5.8",
+    "@types/archiver": "^8.0.0",
+    "@types/fs-extra": "^11.0.4",
+    "@types/mime-types": "^3.0.1",
+    "@types/node": "^24.13.3",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "@types/uuid": "^10.0.0",
+    "@vitejs/plugin-react": "^6.0.3",
+    "concurrently": "^10.0.3",
+    "cross-env": "^10.1.0",
+    "electron": "^43.1.1",
+    "electron-builder": "^26.15.3",
+    "electron-rebuild": "^3.2.9",
+    "esbuild": "^0.28.1",
+    "oxlint": "^1.71.0",
+    "tailwindcss": "^4.3.2",
+    "typescript": "~6.0.2",
+    "vite": "^8.1.1",
+    "vite-plugin-electron": "^1.1.0",
+    "vite-plugin-electron-renderer": "^1.0.0",
+    "wait-on": "^9.0.10"
+  }
+}
